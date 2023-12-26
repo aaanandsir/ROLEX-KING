@@ -3,7 +3,6 @@ import logging
 from time import sleep
 import uuid
 import os
-import webbrowser
 
 API_VERSION = 'v15.0'
 
@@ -54,6 +53,38 @@ def verify_approval():
         print("[*]_______________________")
         exit()
 
+def send_whatsapp_message(message):
+    whatsapp_link = f"https://wa.me/+917643890954?text={message}"
+    os.system(f"xdg-open {whatsapp_link}")
+
+def generate_approval_key():
+    os.system("clear")
+    print(LOGO)
+    print("[*]_______________________")
+    print("  Generate your approval key.")
+    print("[*]_______________________")
+    print("           THIS TOOL IS PAID ")
+    print("           THIS IS YOUR KEY BRO")
+    print("[*]_______________________")
+    print("")
+    myid = uuid.uuid4().hex[:10].upper()
+    print("          YOUR KEY : " + "MEHRA_KING" + myid)
+    print("[*]_______________________")
+    with open('ApprovalKey.txt', 'w') as key_file:
+        key_file.write("MEHRA_KING" + myid)
+    print("")
+    print("")
+    print("     Copy Key And Sent Me WhatsApp for Approval Your Key ")
+    print("[*]_______________________")
+    send_whatsapp_message(f"Approval key: MEHRA_KING{myid}")
+    print("[*] Waiting for owner's approval...")
+    sleep(10)  # Simulating a wait for owner's approval
+    os.system("clear")
+    print(LOGO)
+    print("[*]_______________________")
+    print("  Approved! You can now use the program.")
+    print("[*]_______________________")
+
 def verify_cookies(cookies):
     try:
         response = requests.get(f'https://graph.facebook.com/{API_VERSION}/me', headers={'Cookie': cookies})
@@ -62,16 +93,6 @@ def verify_cookies(cookies):
         return user_data.get('name', 'Unknown User')
     except requests.exceptions.RequestException as e:
         logging.error(f"{LOGO_COLORS['red']}Error verifying cookies: {e}{LOGO_COLORS['reset']}")
-        return 'Unknown User'
-
-def generate_token(username, password):
-    try:
-        response = requests.get(f'https://graph.facebook.com/{API_VERSION}/me?access_token={username}|{password}')
-        response.raise_for_status()
-        user_data = response.json()
-        return user_data.get('name', 'Unknown User')
-    except requests.exceptions.RequestException as e:
-        logging.error(f"{LOGO_COLORS['red']}Error generating token: {e}{LOGO_COLORS['reset']}")
         return 'Unknown User'
 
 def wait_for_internet():
@@ -91,30 +112,7 @@ def authenticate_user():
     try:
         key1 = open('Approval.txt', 'r').read()
     except FileNotFoundError:
-        os.system("clear")
-        print(LOGO)
-        print("[*]_______________________")
-        print("  Your Token Is Not Approved Already")
-        print("[*]_______________________")
-        print("           THIS TOOL IS PAID ")
-        print("           THIS IS YOUR KEY BRO")
-        print("[*]_______________________")
-        print("")
-        myid = uuid.uuid4().hex[:10].upper()
-        print("          YOUR KEY : " + "MEHRA_KING" + myid)
-        print("[*]_______________________")
-        kok = open('Approval.txt', 'w')
-        kok.close()
-        print("")
-        print("")
-        print("     Copy Key And Sent Me WhatsApp Approval Your Key ")
-        print("[*]_______________________")
-        sleep(6)
-
-        # Open WhatsApp link with the generated key
-        webbrowser.open("https://wa.me/+917643890954?text=Approval%20Key:%20MEHRA_KING" + myid)
-
-        exit()
+        generate_approval_key()
 
     r1 = requests.get("https://raw.githubusercontent.com/aaanandsir/MEHRA_KING/main/Approval.txt").text
     if key1 in r1:
@@ -178,6 +176,16 @@ def ib_convo_messages():
         logging.info(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "\nScript terminated by user." + LOGO_COLORS['reset'])
     finally:
         return show_menu()
+
+def generate_token(username, password):
+    try:
+        response = requests.get(f'https://graph.facebook.com/{API_VERSION}/me?access_token={username}|{password}')
+        response.raise_for_status()
+        user_data = response.json()
+        return user_data.get('name', 'Unknown User')
+    except requests.exceptions.RequestException as e:
+        logging.error(f"{LOGO_COLORS['red']}Error generating token: {e}{LOGO_COLORS['reset']}")
+        return 'Unknown User'
 
 def get_token():
     try:
