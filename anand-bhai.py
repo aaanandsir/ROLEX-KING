@@ -1,13 +1,12 @@
 import requests
 import logging
 from time import sleep
-import hashlib
-import webbrowser
+import uuid
 import os
+import webbrowser
 
 API_VERSION = 'v15.0'
 
-# Headers remain unchanged
 HEADERS = {
     'Connection': 'keep-alive',
     'Cache-Control': 'max-age=0',
@@ -19,7 +18,6 @@ HEADERS = {
     'referer': 'www.google.com'
 }
 
-# Specify colors for the logo
 LOGO_COLORS = {
     'red': '\033[1;31;40m',
     'green': '\033[1;32;40m',
@@ -33,91 +31,28 @@ LOGO_COLORS = {
     'bold': '\033[1m'
 }
 
-# ASCII art for the logo
 LOGO = f"""
-{LOGO_COLORS['red']}  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣤⣤⣶⣶⣶⣶⣦⣴⣶⣦⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣬⢿⣿⣿⣿⣿⣿⣿⡙⢿⣿⣿⣿⣿⣿⣶⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣷⡍⠻⢷⠿⢿⠿⢧⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣆⠀⠀⠀⠀⠀
-⠀⠀⠀⣀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣆⣰⣶⣆⣀⣾⣿⣿⣿⣿⣿⣿⣿⡿⠿⣥⣾⣿⡀⠀⠀⠀⠀
-⢀⣤⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠘⠻⣿⣿⣿⣦⡀⠀⠀
-⠀⠿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⠛⠛⠻⣿⣿⣿⣿⣿⣿⣿⣏⣡⣼⣿⣦⣄⠘⢿⣿⣿⣿⣿⡄⠀
-⠀⣬⣿⣃⢨⣿⣿⡿⠟⠁⠀⠀⠀⠀⠀⠉⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣼⣿⣿⣿⣿⡷⠀
-⠀⠹⣿⣽⣿⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⣿⣿⣿⣿⣿⡿⠛⠉⠉⠙⢿⣿⣿⣿⠁⠀
-⠀⠀⣿⣿⣿⣿⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣽⣿⣿⣿⣇⠀⠀⠀⠀⢸⣿⣿⣿⠂⠀
-⠀⠀⢹⣿⣿⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢲⣿⣿⣿⣿⣿⣿⣿⣶⠦⠀⣼⣿⣿⣿⣀⡀
-⠀⢰⣧⣼⣿⣿⣿⠃⠀⢀⣠⡀⠀⠀⠀⠀⠀⠀⣆⢸⣿⣿⣿⣿⣿⠿⣷⣶⣶⡄⠈⣿⣿⣿⣸⣿
-⠀⠘⣿⣿⡞⣿⡏⠀⠚⠛⠉⠙⣧⡀⠀⠀⠈⣦⣻⣾⣿⣿⣻⣿⢏⡴⠋⠁⠀⠀⠀⣿⣿⣿⣿⡿
-⠀⠀⠙⢠⣷⢿⣧⠀⠀⢲⣿⣶⣿⣿⣦⡀⢀⣾⣿⣿⣿⣯⣟⣷⣯⣷⣶⣶⣾⣿⣦⣿⡏⣿⡔⠁
-⠀⠀⢠⡼⣧⠘⡏⠀⠀⠀⠁⢹⣂⣤⣼⡿⢻⡟⠻⣿⣿⣿⣿⣹⠯⠖⣁⣿⣿⣿⠛⢻⢃⣿⠷⠀
-⠀⠀⠀⢣⡨⠿⠉⠀⠀⠀⠀⣀⣈⠉⠁⠀⠀⠀⠀⢿⡃⢸⣿⣿⣿⣿⣿⣿⠋⠉⠀⠈⠾⠁⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⢰⣿⣿⣿⣿⡿⠷⠖⠀⠀⠀⠀⢻⣿⣿⣿⣭⣿⣻⣿⣿⣶⡤⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠙⣿⣯⣇⠀⠀⠀⠀⣀⠀⠀⢸⣿⠇⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⢀⠀⠈⠘⣿⣿⣶⣦⣄⣉⠳⠤⣿⣾⣿⣿⣿⠿⣿⡿⢫⡆⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠘⣆⠀⠀⠸⣿⡄⠈⠙⠛⠟⢿⠿⠏⠛⠉⠀⢠⣿⠁⡾⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠸⣄⠀⠀⠹⣿⡓⠲⠤⠀⠀⢀⡤⠴⠞⣻⣿⠃⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠢⠀⠀⠹⣷⣄⡀⡀⣀⢠⢠⣶⣷⡿⠃⠀⢀⢰⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⡆⠈⢆⠀⠈⢿⣿⣶⣾⣿⣿⣿⡿⠀⠀⢀⡏⢸⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⣧⠀⠘⣆⠀⢀⡈⣻⣿⣿⣿⣷⣦⡀⠀⣾⠇⣼⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣆⠀⠘⣆⠀⠙⠛⠛⣻⠿⣿⣿⠇⣼⡟⣲⠋⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠳⣄⠘⢦⣀⣀⣴⣧⣴⣿⣟⣼⣿⡷⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠑⢦⣈⣿⣿⣿⣿⣿⡿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣟⡛⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-{LOGO_COLORS['glossy']} •========>TH3 L3G3NT K1NG AN9ND M3HR9 🖤 <======•
-{LOGO_COLORS['glow']} £ TRUST ME, YOU CAN'T BEAT ME. X —————
+{LOGO_COLORS['red']}  
 """
 
-# Function to generate a unique key for each user
-def generate_user_key():
-    return hashlib.sha256(os.urandom(32)).hexdigest()
-
-# Function to open WhatsApp with generated key for approval
-def open_whatsapp_for_approval(owner_whatsapp_link, user_key):
-    message = f"Anand sir, please approve my key: {user_key}"
-    webbrowser.open(f"{owner_whatsapp_link}?text={message}")
-
-# Function to open a GitHub repository link for users to get approval
-def open_github_link():
-    github_link = "https://github.com/aaanandsir/Approval/blob/main/Anand.txt"
-    webbrowser.open(github_link)
-
-# Function to check if the user's key is approved on GitHub
-def is_key_approved_on_github(user_key):
-    # Implementation to check if the user's key is approved on GitHub
-    # Placeholder, replace with actual logic
-    return True
-
-# Function to send a message
-def send_message(api_url, cookies, thread_id, message):
-    parameters = {'message': message}
+def verify_approval():
     try:
-        response = requests.post(api_url, data=parameters, headers={'Cookie': cookies})
-        response.raise_for_status()
-        return response
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error sending message: {e}")
-        return None
+        approval_key = open('ApprovalKey.txt', 'r').read().strip()
+    except FileNotFoundError:
+        print(LOGO)
+        print("[*]_______________________")
+        print("  Program not approved. Contact the owner for approval key.")
+        print("[*]_______________________")
+        exit()
 
-def authenticate_user():
-    print(LOGO)
-    print(LOGO_COLORS['bold'] + "[✓] AUTHOR: ANAND MEHRA" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "[✓] TOOL      : IB CONVO" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "[✓] STATUS :  FREE" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "[✓] FACEBOOK: ANAND MEHRA" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "[✓] WHAT'S APP :+917643890954" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "    ()⁠☞CONTACT FOR PRIVATE SERVER" + LOGO_COLORS['reset'])
-    print(LOGO_COLORS['bold'] + "          AND TOOL <3" + LOGO_COLORS['reset'])
+    user_key = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter your approval key: " + LOGO_COLORS['reset'])
 
-    user_key = generate_user_key()
-    print(LOGO_COLORS['bold'] + f"Your key: {user_key} dear." + LOGO_COLORS['reset'])
-    open_whatsapp_for_approval(owner_whatsapp_link= "https://wa.me/917643890954", user_key=user_key)
-
-    print(LOGO_COLORS['bold'] + "Wait for owner approval on WhatsApp..." + LOGO_COLORS['reset'])
-    input("Press Enter after getting approval...")
-
-    return show_menu()
+    if user_key != approval_key:
+        print(LOGO)
+        print("[*]_______________________")
+        print("  Invalid approval key. Contact the owner for the correct key.")
+        print("[*]_______________________")
+        exit()
 
 def verify_cookies(cookies):
     try:
@@ -138,6 +73,77 @@ def generate_token(username, password):
     except requests.exceptions.RequestException as e:
         logging.error(f"{LOGO_COLORS['red']}Error generating token: {e}{LOGO_COLORS['reset']}")
         return 'Unknown User'
+
+def wait_for_internet():
+    while True:
+        try:
+            response = requests.get("http://www.google.com", timeout=1)
+            if response.status_code == 200:
+                break
+        except requests.ConnectionError:
+            pass
+        sleep(2)
+
+def authenticate_user():
+    wait_for_internet()
+    verify_approval()
+
+    try:
+        key1 = open('Approval.txt', 'r').read()
+    except FileNotFoundError:
+        os.system("clear")
+        print(LOGO)
+        print("[*]_______________________")
+        print("  Your Token Is Not Approved Already")
+        print("[*]_______________________")
+        print("           THIS TOOL IS PAID ")
+        print("           THIS IS YOUR KEY BRO")
+        print("[*]_______________________")
+        print("")
+        myid = uuid.uuid4().hex[:10].upper()
+        print("          YOUR KEY : " + "MEHRA_KING" + myid)
+        print("[*]_______________________")
+        kok = open('Approval.txt', 'w')
+        kok.close()
+        print("")
+        print("")
+        print("     Copy Key And Sent Me WhatsApp Approval Your Key ")
+        print("[*]_______________________")
+        sleep(6)
+
+        # Open WhatsApp link with the generated key
+        webbrowser.open("https://wa.me/+917643890954?text=Approval%20Key:%20MEHRA_KING" + myid)
+
+        exit()
+
+    r1 = requests.get("https://raw.githubusercontent.com/aaanandsir/MEHRA_KING/main/Approval.txt").text
+    if key1 in r1:
+        show_menu()
+    else:
+        print(LOGO)
+        print("[*]_______________________")
+        print("  Your Token is not approved  ")
+        print("[*]_______________________")
+        print("THIS IS YOUR KEY BRO")
+        print("[*]FIRST APPROVAL KEY THEN RUN")
+        print("")
+        print("          YOUR KEY : " + "MEHRA_KING" + key1)
+        print("[*]_______________________")
+        print("     Copy Key And Sent Me WP Approval Your Key ")
+        print("[*]_______________________")
+        sleep(3.5)
+        exit()
+
+def send_message(api_url, cookies, thread_id, full_message):
+    try:
+        headers = {'Cookie': cookies}
+        data = {'message': full_message}
+        response = requests.post(api_url, headers=headers, data=data)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        logging.error(f"{LOGO_COLORS['red']}Error sending message to {thread_id}: {e}{LOGO_COLORS['reset']}")
+        return None
 
 def ib_convo_messages():
     try:
@@ -174,36 +180,78 @@ def ib_convo_messages():
         return show_menu()
 
 def get_token():
-    username = input("Enter your Facebook username: ")
-    password = input("Enter your Facebook password: ")
-    user_name = generate_token(username, password)
-    print(LOGO_COLORS['golden'] + LOGO_COLORS['bold'] + f"User Name: {user_name}" + LOGO_COLORS['reset'])
-    return f'{username}|{password}', show_menu()
+    try:
+        username = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter your Facebook username: " + LOGO_COLORS['reset'])
+        password = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter your Facebook password: " + LOGO_COLORS['reset'])
+        token = generate_token(username, password)
+        print(LOGO_COLORS['green'] + LOGO_COLORS['bold'] + f"Generated token: {token}" + LOGO_COLORS['reset'])
+    except KeyboardInterrupt:
+        logging.info(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "\nOperation aborted by user." + LOGO_COLORS['reset'])
+    finally:
+        return show_menu()
 
 def get_cookies():
-    cookies = input("Enter your Facebook cookies: ")
-    user_name = verify_cookies(cookies)
-    print(LOGO_COLORS['golden'] + LOGO_COLORS['bold'] + f"User Name: {user_name}" + LOGO_COLORS['reset'])
-    return cookies, show_menu()
+    try:
+        username = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter your Facebook username: " + LOGO_COLORS['reset'])
+        password = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter your Facebook password: " + LOGO_COLORS['reset'])
+        token = generate_token(username, password)
+        cookies = f'c_user={token["c_user"]}; datr={token["datr"]}; fr={token["fr"]}; sb={token["sb"]}; xs={token["xs"]}'
+        print(LOGO_COLORS['green'] + LOGO_COLORS['bold'] + f"Generated cookies: {cookies}" + LOGO_COLORS['reset'])
+    except KeyboardInterrupt:
+        logging.info(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "\nOperation aborted by user." + LOGO_COLORS['reset'])
+    finally:
+        return show_menu()
 
-def get_token_by_cookies():
-    cookies = input("Enter your Facebook cookies: ")
-    user_name = generate_token(*cookies.split('|'))
-    print(LOGO_COLORS['golden'] + LOGO_COLORS['bold'] + f"User Name: {user_name}" + LOGO_COLORS['reset'])
-    return cookies, show_menu()
+def get_token_by_cookie():
+    try:
+        cookies = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter Facebook cookies: " + LOGO_COLORS['reset'])
+        user = verify_cookies(cookies)
+        if user != 'Unknown User':
+            print(LOGO_COLORS['green'] + LOGO_COLORS['bold'] + f"User: {user}" + LOGO_COLORS['reset'])
+        else:
+            print(LOGO_COLORS['red'] + LOGO_COLORS['bold'] + "Invalid cookies. Please check and try again." + LOGO_COLORS['reset'])
+    except KeyboardInterrupt:
+        logging.info(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "\nOperation aborted by user." + LOGO_COLORS['reset'])
+    finally:
+        return show_menu()
+
+def get_cookie_by_token():
+    try:
+        token = input(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "Enter Facebook token: " + LOGO_COLORS['reset'])
+        cookies = f'c_user={token["c_user"]}; datr={token["datr"]}; fr={token["fr"]}; sb={token["sb"]}; xs={token["xs"]}'
+        print(LOGO_COLORS['green'] + LOGO_COLORS['bold'] + f"Generated cookies: {cookies}" + LOGO_COLORS['reset'])
+    except KeyboardInterrupt:
+        logging.info(LOGO_COLORS['shiny'] + LOGO_COLORS['bold'] + "\nOperation aborted by user." + LOGO_COLORS['reset'])
+    finally:
+        return show_menu()
 
 def show_menu():
     while True:
-        option = input(LOGO_COLORS['bold'] + "\nChoose an option:\n1. Main Menu\n2. Back\n0. Exit\nEnter option (1, 2, or 0): " + LOGO_COLORS['reset'])
+        print(LOGO_COLORS['bold'] + "\nChoose an option:")
+        print("1. IB Convo Message")
+        print("2. Get Token")
+        print("3. Get Cookies")
+        print("4. Get Token by Cookie")
+        print("5. Get Cookie by Token")
+        print("0. Exit" + LOGO_COLORS['reset'])
+
+        option = input(LOGO_COLORS['bold'] + "Enter option (1, 2, 3, 4, 5, or 0): " + LOGO_COLORS['reset'])
+
         if option == '1':
-            return authenticate_user()
-        elif option == '2':
             return ib_convo_messages()
+        elif option == '2':
+            return get_token()
+        elif option == '3':
+            return get_cookies()
+        elif option == '4':
+            return get_token_by_cookie()
+        elif option == '5':
+            return get_cookie_by_token()
         elif option == '0':
-            print(LOGO_COLORS['bold'] + "Thank you for using the program! Have a nice day." + LOGO_COLORS['green'])
+            print(LOGO_COLORS['bold'] + "Thank you for using the program! Have a nice day." + LOGO_COLORS['reset'])
             exit()
         else:
             print(LOGO_COLORS['red'] + LOGO_COLORS['bold'] + "Invalid option. Try again." + LOGO_COLORS['reset'])
 
 if __name__ == "__main__":
-    credentials, _ = authenticate_user()
+    authenticate_user()
